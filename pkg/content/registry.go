@@ -99,7 +99,9 @@ func NewRegistryWithDiscover(targetRef string, opts RegistryOptions) (*Registry,
 		return nil, err
 	}
 
-	resolver, err := orasdocker.WithDiscover(targetRef, registry.Resolver)
+	resolverOptions := newResolverOptions(opts.Username, opts.Password, opts.Insecure, opts.Insecure, opts.Configs...)
+
+	resolver, err := orasdocker.WithDiscover(targetRef, registry.Resolver, resolverOptions)
 	if err != nil {
 		return nil, err
 	}

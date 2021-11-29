@@ -23,7 +23,10 @@ import (
 
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/remotes/docker"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	auth_opts "oras.land/oras-go/pkg/auth"
 	auth "oras.land/oras-go/pkg/auth/docker"
+	"oras.land/oras-go/pkg/target"
 	orasdocker "oras.land/oras-go/pkg/target/docker"
 )
 
@@ -34,6 +37,7 @@ type RegistryOptions struct {
 	Password  string
 	Insecure  bool
 	PlainHTTP bool
+	UserAgent string
 }
 
 // Registry provides content from a spec-compliant registry. Create an use a new one for each
@@ -47,6 +51,43 @@ func NewRegistry(opts RegistryOptions) (*Registry, error) {
 	return &Registry{
 		Resolver: newResolver(opts.Username, opts.Password, opts.Insecure, opts.PlainHTTP, opts.Configs...),
 	}, nil
+}
+
+func NewRegistryWithDiscover1(targetRef string, opts RegistryOptions) (target.Target, error) {
+	obj := target.FromOCIDescriptor(targetRef, ocispec.Descriptor{}, "", nil)
+
+	_, host, ns, _, err := obj.ReferenceSpec()
+	if err != nil {
+		return nil, err
+	}
+
+	loginOpts := []auth_opts.LoginOption{
+		auth_opts.WithLoginUsername(opts.Username),
+		auth_opts.WithLoginSecret(opts.Password),
+		auth_opts.WithLoginUserAgent(opts.UserAgent),
+	}
+
+	if opts.Insecure {
+		loginOpts = append(loginOpts, auth_opts.WithLoginInsecure())
+	}
+
+	client, err := auth.NewRegistryWithAccessProvider(host, ns, opts.Configs, loginOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	// Backup resolver
+	resolver, err := NewRegistry(opts)
+	if err != nil {
+		return nil, err
+	}
+
+	registry, err := orasdocker.FromRemotesRegistry(targetRef, client, resolver)
+	if err != nil {
+		return nil, err
+	}
+
+	return registry, nil
 }
 
 func NewRegistryWithDiscover(targetRef string, opts RegistryOptions) (*Registry, error) {

@@ -32,6 +32,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	artifactspec "github.com/oras-project/artifacts-spec/specs-go/v1"
 	"github.com/pkg/errors"
+	orasremotesclient "oras.land/oras-go/pkg/remotes"
 	"oras.land/oras-go/pkg/target"
 )
 
@@ -54,6 +55,26 @@ func WithDiscover(ref string, resolver remotes.Resolver) (target.Target, error) 
 		Resolver:   resolver}, nil
 }
 
+// WithDiscover extends an existing resolver to include the discoverer interface in the underlying type
+func FromRemotesRegistry(ref string, client *orasremotesclient.Registry, fallback remotes.Resolver) (target.Target, error) {
+	opts := NewOpts(nil)
+
+	r, err := reference.Parse(ref)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dockerDiscoverer{
+		client:     client,
+		header:     opts.Headers,
+		hosts:      opts.Hosts,
+		refspec:    r,
+		reference:  ref,
+		repository: strings.TrimPrefix(r.Locator, r.Hostname()+"/"),
+		tracker:    docker.NewInMemoryTracker(),
+		Resolver:   fallback}, nil
+}
+
 // Discoverer is an interface that provides methods for discovering references
 type Discoverer interface {
 	// Discover is a function that looks for references of the specified artifact type who share the subject descriptor as their root
@@ -63,6 +84,7 @@ type Discoverer interface {
 
 type dockerDiscoverer struct {
 	hosts      docker.RegistryHosts
+	client     *orasremotesclient.Registry
 	header     http.Header
 	refspec    reference.Spec
 	reference  string

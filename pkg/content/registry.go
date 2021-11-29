@@ -62,6 +62,7 @@ func NewRegistryWithDiscover1(targetRef string, opts RegistryOptions) (target.Ta
 	}
 
 	loginOpts := []auth_opts.LoginOption{
+		auth_opts.WithLoginHostname(host),
 		auth_opts.WithLoginUsername(opts.Username),
 		auth_opts.WithLoginSecret(opts.Password),
 		auth_opts.WithLoginUserAgent(opts.UserAgent),

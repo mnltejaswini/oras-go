@@ -56,8 +56,8 @@ func WithDiscover(ref string, resolver remotes.Resolver) (target.Target, error) 
 }
 
 // WithDiscover extends an existing resolver to include the discoverer interface in the underlying type
-func FromRemotesRegistry(ref string, client *orasremotesclient.Registry, fallback remotes.Resolver) (target.Target, error) {
-	opts := NewOpts(nil)
+func FromRemotesRegistry(ref string, client *orasremotesclient.Registry, fallback remotes.Resolver, resolverOptions *docker.ResolverOptions) (target.Target, error) {
+	opts := NewOpts(resolverOptions)
 
 	r, err := reference.Parse(ref)
 	if err != nil {
